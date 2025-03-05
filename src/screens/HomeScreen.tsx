@@ -6,14 +6,16 @@ import {
     TextInput,
     TouchableOpacity,
     ScrollView,
-    Alert,
-    Linking,
     Image,
     Modal,
+    Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert } from 'react-native';
+
 interface ErrorMessages {
     email?: string;
     password?: string;
@@ -22,25 +24,29 @@ interface ErrorMessages {
     age?: string;
     parentName?: string;
     phoneNumber?: string;
-};
+}
+
 interface Payment {
     id: number;
     description: string;
     amount: number;
-};
+}
+
 interface MercadoPagoResponse {
     preferenceId: string;
     status: string;
-};
+}
 
-const ElSemilleroApp = () => {
+const HomeScreen = () => {
     type ScreenType = 'login' | 'register' | 'verify' | 'dashboard' | 'inscription';
     const [currentScreen, setCurrentScreen] = useState<ScreenType>('login');
+    
     type AuthDataType = {
         email: string;
         password: string;
         verificationCode: string;
     };
+    
     const [errors, setErrors] = useState<ErrorMessages>({});
 
     const [authData, setAuthData] = useState<AuthDataType>({
@@ -62,13 +68,13 @@ const ElSemilleroApp = () => {
             id: 1,
             title: 'Próximo Torneo',
             description: 'Este fin de semana tendremos el torneo de primavera',
-            date: '2025-02-15'
+            date: '2025-03-15'
         },
         {
             id: 2,
-            title: 'Cuota Febrero',
-            description: 'Ya está disponible el pago de la cuota de febrero',
-            date: '2025-02-01'
+            title: 'Cuota Marzo',
+            description: 'Ya está disponible el pago de la cuota de marzo',
+            date: '2025-03-01'
         }
     ]);
 
@@ -79,8 +85,10 @@ const ElSemilleroApp = () => {
         { id: 1, description: 'Cuota Mensual', amount: 5000 },
         { id: 2, description: 'Matrícula', amount: 10000 },
         { id: 3, description: 'Equipamiento', amount: 15000 },
-    ]; const validateAuth = () => {
-        let newErrors: ErrorMessages = {}; // Tipo ErrorMessages
+    ]; 
+    
+    const validateAuth = () => {
+        let newErrors: ErrorMessages = {};
 
         if (!authData.email) {
             newErrors.email = 'El correo es requerido';
@@ -118,31 +126,31 @@ const ElSemilleroApp = () => {
     const handleLogin = () => {
         if (validateAuth()) {
             // Simular envío de código de verificación
-            Alert.alert(
-                'Código Enviado',
-                'Se ha enviado un código de verificación a tu correo',
-                [{ text: 'OK', onPress: () => setCurrentScreen('verify') }]
-            );
+            Alert.alert('Éxito', 'Código enviado a tu correo');
+            setCurrentScreen('verify');
         }
-    }; const handleVerification = async () => {
+    }; 
+    
+    const handleVerification = async () => {
         try {
             // Simular llamada al backend para verificar el código
             const isValid = await verifyCodeWithBackend(authData.verificationCode);
 
             if (isValid) {
                 setCurrentScreen('dashboard');
+                Alert.alert('Éxito', 'Código enviado a tu correo');
             } else {
-                Alert.alert('Error', 'Código de verificación incorrecto');
+                Alert.alert('Código de verificación incorrecto');
             }
         } catch (error) {
-            Alert.alert('Error', 'No se pudo verificar el código. Intente nuevamente.');
+            Alert.alert('No se pudo verificar el código. Intente nuevamente.');
         }
     };
 
     // Simulación de verificación con backend
     const verifyCodeWithBackend = async (code: string) => {
         // Aquí iría la llamada real al backend
-        return new Promise((resolve) => {
+        return new Promise<boolean>((resolve) => {
             setTimeout(() => {
                 resolve(code === '123456'); // Solo para demo
             }, 1000);
@@ -152,30 +160,7 @@ const ElSemilleroApp = () => {
     const handlePayment = (payment: Payment) => {
         setSelectedPayment(payment);
         setShowPaymentModal(true);
-    }; const processPayment = async () => {
-        try {
-            if (!selectedPayment) {
-                throw new Error('No se ha seleccionado un método de pago');
-            }
-
-            // Simular creación de preferencia en Mercado Pago
-            const response = await createMercadoPagoPreference(selectedPayment);
-
-            if (response.preferenceId) {
-                await Linking.openURL(`mercadopago://app?preference_id=${response.preferenceId}`);
-            } else {
-                throw new Error('No se pudo obtener el ID de preferencia');
-            }
-        } catch (error) {
-            let message = 'Error desconocido';
-            if (error instanceof Error) message = error.message; // Verificar tipo
-            Alert.alert('Error', message);
-        }
-    };
-
-    const createMercadoPagoPreference = async (
-        payment: Payment
-    ): Promise<MercadoPagoResponse> => { // Tipo de retorno explícito
+    };    const createMercadoPagoPreference = async (payment: Payment): Promise<MercadoPagoResponse> => {
         return new Promise((resolve) => {
             setTimeout(() => {
                 resolve({
@@ -184,7 +169,36 @@ const ElSemilleroApp = () => {
                 });
             }, 1000);
         });
-    }; const handleSubmit = async () => {
+    };
+    
+    const processPayment = async () => {
+        try {
+            if (!selectedPayment) {
+                throw new Error('No se ha seleccionado un método de pago');
+            }
+    
+            // Simular creación de preferencia en Mercado Pago
+            const response = await createMercadoPagoPreference(selectedPayment);
+    
+            if (response.preferenceId) {
+                Alert.alert('Información', 'Abriendo Mercado Pago...');
+                setShowPaymentModal(false);
+                
+                try {
+                    await Linking.openURL(`mercadopago://app?preference_id=${response.preferenceId}`);
+                } catch (linkError) {
+                    // Si no puede abrir la app, intenta con el sitio web
+                    await Linking.openURL(`https://www.mercadopago.com.ar/checkout/v1/redirect?preference_id=${response.preferenceId}`);
+                }
+            } else {
+                throw new Error('No se pudo obtener el ID de preferencia');
+            }
+        } catch (error) {
+            let message = 'Error desconocido';
+            if (error instanceof Error) message = error.message;
+            Alert.alert(message);
+        }
+    };const handleSubmit = async () => {
         if (validateForm()) {
             try {
                 // Validar formato del número de teléfono
@@ -211,33 +225,39 @@ Edad: ${formData.age}
 
 Nos pondremos en contacto contigo pronto para los siguientes pasos.`);
 
-                // Enviar mensaje al administrador
-                await Linking.openURL(`whatsapp://send?phone=543624200637&text=${adminMessage}`);
+                // Intentar abrir WhatsApp
+                try {
+                    // Enviar mensaje al administrador
+                    await Linking.openURL(`whatsapp://send?phone=543624200637&text=${adminMessage}`);
+                    
+                    Alert.alert('Éxito','¡Inscripción exitosa!');
+                    
+                    // Limpiar el formulario
+                    setFormData({
+                        studentName: '',
+                        age: '',
+                        gender: 'masculino',
+                        parentName: '',
+                        phoneNumber: '',
+                    });
+                    
+                    // Esperar un segundo antes de enviar el mensaje al usuario
+                    setTimeout(async () => {
+                        try {
+                            // Enviar mensaje al usuario
+                            await Linking.openURL(`whatsapp://send?phone=54${phoneNumber}&text=${userMessage}`);
+                        } catch (whatsappError) {
+                            Alert.alert('No se pudo abrir WhatsApp para enviar mensaje al usuario');
+                        }
+                    }, 1000);
+                } catch (whatsappError) {
+                    Alert.alert('No se pudo abrir WhatsApp. Verifique que esté instalado.');
+                }
 
-                // Esperar un segundo antes de enviar el mensaje al usuario
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // Enviar mensaje al usuario
-                await Linking.openURL(`whatsapp://send?phone=54${phoneNumber}&text=${userMessage}`);
-
-                // Limpiar el formulario
-                setFormData({
-                    studentName: '',
-                    age: '',
-                    gender: 'masculino',
-                    parentName: '',
-                    phoneNumber: '',
-                });
-
-                Alert.alert(
-                    '¡Inscripción Exitosa!',
-                    'Los mensajes de WhatsApp se abrirán automáticamente',
-                    [{ text: 'OK' }]
-                );
             } catch (error) {
                 let message = 'Error desconocido';
-                if (error instanceof Error) message = error.message; // Verificar tipo
-                Alert.alert('Error', message);
+                if (error instanceof Error) message = error.message;
+                Alert.alert(message);
             }
         }
     };
@@ -416,14 +436,14 @@ Nos pondremos en contacto contigo pronto para los siguientes pasos.`);
     );
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
             <LinearGradient
                 colors={['#4CAF50', '#388E3C']}
                 style={styles.header}
-            >      <Image
+            >      
+                <Image
                     source={{ uri: 'https://api.a0.dev/assets/image?text=el%20semillero%20soccer%20school%20logo&aspect=1:1' }}
                     style={styles.logo}
-                    onError={() => console.log('Error loading image')}
                 />
                 <Text style={styles.headerTitle}>El Semillero</Text>
                 <Text style={styles.headerSubtitle}>Escuela de Fútbol Infantil</Text>
@@ -453,7 +473,7 @@ Nos pondremos en contacto contigo pronto para los siguientes pasos.`);
                             style={styles.paymentButton}
                             onPress={processPayment}
                         >
-                            <FontAwesome5 name="mercado-pago" size={24} color="white" />
+                            <FontAwesome5 name="money-bill-wave" size={24} color="white" />
                             <Text style={styles.paymentButtonText}>Pagar con Mercado Pago</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -465,7 +485,7 @@ Nos pondremos en contacto contigo pronto para los siguientes pasos.`);
                     </View>
                 </View>
             </Modal>
-        </View>
+        </SafeAreaView>
     );
 };
 
@@ -595,6 +615,10 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         marginBottom: 10,
         elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     announcementTitle: {
         fontSize: 16,
@@ -616,6 +640,10 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         marginBottom: 10,
         elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -690,4 +718,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default ElSemilleroApp;
+export default HomeScreen;
