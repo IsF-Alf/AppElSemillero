@@ -28,6 +28,10 @@ interface Payment {
     description: string;
     amount: number;
 };
+interface MercadoPagoResponse {
+    preferenceId: string;
+    status: string;
+};
 
 const ElSemilleroApp = () => {
     type ScreenType = 'login' | 'register' | 'verify' | 'dashboard' | 'inscription';
@@ -95,10 +99,13 @@ const ElSemilleroApp = () => {
     };
 
     const validateForm = () => {
-        let newErrors = {};
+        let newErrors: ErrorMessages = {};
 
+        if (!authData.email) {
+            newErrors.email = 'El correo es requerido';
+        }
         if (!formData.studentName) newErrors.studentName = 'El nombre es requerido';
-        if (!formData.age || isNaN(formData.age)) newErrors.age = 'Ingrese una edad válida';
+        if (!formData.age || isNaN(Number(formData.age))) newErrors.age = 'Ingrese una edad válida';
         if (!formData.parentName) newErrors.parentName = 'El nombre del tutor es requerido';
         if (!formData.phoneNumber || !/^\d{10}$/.test(formData.phoneNumber)) {
             newErrors.phoneNumber = 'Ingrese un número válido de 10 dígitos';
@@ -142,7 +149,7 @@ const ElSemilleroApp = () => {
         });
     };
 
-    const handlePayment = (payment) => {
+    const handlePayment = (payment: Payment) => {
         setSelectedPayment(payment);
         setShowPaymentModal(true);
     }; const processPayment = async () => {
@@ -160,16 +167,15 @@ const ElSemilleroApp = () => {
                 throw new Error('No se pudo obtener el ID de preferencia');
             }
         } catch (error) {
-            Alert.alert(
-                'Error',
-                error.message || 'No se pudo procesar el pago. Intente nuevamente.',
-                [{ text: 'OK' }]
-            );
+            let message = 'Error desconocido';
+            if (error instanceof Error) message = error.message; // Verificar tipo
+            Alert.alert('Error', message);
         }
     };
 
-    const createMercadoPagoPreference = async (payment: Payment) => {
-        // Aquí iría la llamada real al backend para crear la preferencia
+    const createMercadoPagoPreference = async (
+        payment: Payment
+    ): Promise<MercadoPagoResponse> => { // Tipo de retorno explícito
         return new Promise((resolve) => {
             setTimeout(() => {
                 resolve({
@@ -229,11 +235,9 @@ Nos pondremos en contacto contigo pronto para los siguientes pasos.`);
                     [{ text: 'OK' }]
                 );
             } catch (error) {
-                Alert.alert(
-                    'Error',
-                    error.message || 'Asegúrate de tener WhatsApp instalado',
-                    [{ text: 'OK' }]
-                );
+                let message = 'Error desconocido';
+                if (error instanceof Error) message = error.message; // Verificar tipo
+                Alert.alert('Error', message);
             }
         }
     };
