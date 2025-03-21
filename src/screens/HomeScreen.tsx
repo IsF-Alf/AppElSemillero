@@ -138,7 +138,7 @@ const HomeScreen = () => {
 
             if (isValid) {
                 setCurrentScreen('dashboard');
-                Alert.alert('Éxito', 'Código enviado a tu correo');
+                Alert.alert('Éxito', 'Código enviado a su correo');
             } else {
                 Alert.alert('Código de verificación incorrecto');
             }
